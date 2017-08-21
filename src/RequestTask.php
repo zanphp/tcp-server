@@ -86,6 +86,9 @@ class RequestTask
     {
         $response = (yield $this->middleWareManager->executeFilters());
         if(null !== $response){
+            if ($response instanceof ResponseEntity) {
+                $response = $response->getContent();
+            }
             if ($this->request->isGenericInvoke()) {
                 throw new GenericInvokeException(strval($response));
             } else {
