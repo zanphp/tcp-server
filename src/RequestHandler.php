@@ -151,12 +151,19 @@ class RequestHandler
 
     public function handleTimeout()
     {
-        $this->task->setStatus(Signal::TASK_KILLED);
-        $this->reportHawk();
-        $ex = $this->logTimeout();
-        $coroutine = static::handleException($this->middleWareManager, $this->response, $ex);
-        Task::execute($coroutine, $this->context);
-        $this->event->fire($this->getRequestFinishJobId());
+        try {
+            $this->task->setStatus(Signal::TASK_KILLED);
+            $this->reportHawk();
+            $ex = $this->logTimeout();
+            $coroutine = static::handleException($this->middleWareManager, $this->response, $ex);
+            Task::execute($coroutine, $this->context);
+            $this->event->fire($this->getRequestFinishJobId());
+        } catch (\Throwable $t) {
+            echo_exception($t);
+        } catch (\Exception $e) {
+            echo_exception($e);
+        }
+
     }
 
     private function getTraceIdInfo()
