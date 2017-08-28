@@ -3,14 +3,14 @@
 namespace Zan\Framework\Network\Tcp;
 
 use Thrift\Exception\TApplicationException;
-use Zan\Framework\Contract\Network\Request as BaseRequest;
+use ZanPHP\Contracts\Tcp\TcpRequest;
 use ZanPHP\Contracts\Codec\Codec;
 use ZanPHP\Exception\Codec\CodecException;
 use ZanPHP\NovaCodec\NovaPDU;
 use ZanPHP\NovaGeneric\GenericRequestCodec as GenericRequestCodecA;
 use ZanPHP\ThriftSerialization\ThriftSerializable;
 
-class Request implements BaseRequest
+class Request implements TcpRequest
 {
     private $swooleServer;
     private $data;
