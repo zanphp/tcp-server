@@ -1,10 +1,10 @@
 <?php
 
-namespace ZanPHP\TcpServer\ServerStart;
+namespace Zan\Framework\Network\Tcp\ServerStart;
 
-use ZanPHP\Contracts\Config\ConfigLoader;
-use ZanPHP\Contracts\Config\Repository;
-use ZanPHP\ServerBase\Middleware\MiddlewareInitiator;
+use Zan\Framework\Network\Server\Middleware\MiddlewareInitiator;
+use Zan\Framework\Foundation\Core\Config;
+use Zan\Framework\Foundation\Core\ConfigLoader;
 
 class InitializeMiddleware
 {
@@ -17,14 +17,12 @@ class InitializeMiddleware
      */
     public function bootstrap($server)
     {
-        $repository = make(Repository::class);
-        $middlewarePath = $repository->get('path.middleware');
+        $middlewarePath = Config::get('path.middleware');
         if (!is_dir($middlewarePath)) {
             return;
         }
         $middlewareInitiator = MiddlewareInitiator::getInstance();
-        $configLoader = make(ConfigLoader::class);
-        $configs = $configLoader->load($middlewarePath);
+        $configs = ConfigLoader::getInstance()->load($middlewarePath);
         $middlewareConfig = isset($configs['middleware']) ? $configs['middleware'] : [];
         $middlewareConfig = is_array($middlewareConfig) ? $middlewareConfig : [];
         $middlewareInitiator->initConfig($middlewareConfig);

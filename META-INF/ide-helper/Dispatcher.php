@@ -1,10 +1,11 @@
 <?php
 
-namespace ZanPHP\TcpServer;
+namespace Zan\Framework\Network\Tcp;
 
+
+use Zan\Framework\Foundation\Application;
+use Zan\Framework\Utilities\DesignPattern\Context;
 use Kdt\Iron\Nova\Nova;
-use ZanPHP\Contracts\Foundation\Application;
-use ZanPHP\Coroutine\Context;
 
 class Dispatcher
 {
@@ -42,7 +43,7 @@ class Dispatcher
 
     private function getServiceName()
     {
-        $app = make(Application::class);
+        $app = Application::getInstance();
         $appNamespace = $app->getNamespace();
         $appName = $app->getName();
 

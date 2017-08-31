@@ -1,29 +1,30 @@
 <?php
 
-namespace ZanPHP\TcpServer;
+namespace Zan\Framework\Network\Tcp;
 
+use Zan\Framework\Network\Server\Monitor\Worker;
+use Zan\Framework\Network\Server\WorkerStart\InitializeErrorHandler;
+use Zan\Framework\Network\Server\WorkerStart\InitializeEtcdTTLRefreshing;
+use Zan\Framework\Network\Server\WorkerStart\InitializeHawkMonitor;
+use Zan\Framework\Network\Server\WorkerStart\InitializeServiceChain;
+use Zan\Framework\Network\ServerManager\ServerDiscoveryInitiator;
 use Zan\Framework\Network\ServerManager\ServerStore;
-
+use Zan\Framework\Network\Server\WorkerStart\InitializeServerDiscovery;
+use Zan\Framework\Network\Server\ServerStart\InitLogConfig;
+use Zan\Framework\Network\Server\WorkerStart\InitializeConnectionPool;
 use swoole_server as SwooleServer;
 use Kdt\Iron\Nova\Nova;
-use ZanPHP\Contracts\Config\Repository;
-use ZanPHP\Contracts\Foundation\Application;
-use ZanPHP\EtcdRegistry\ServiceUnregister;
-use ZanPHP\Exception\ZanException;
-use ZanPHP\ServerBase\ServerBase;
-use ZanPHP\ServerBase\ServerStart\InitLogConfig;
-use ZanPHP\ServerBase\WorkerStart\InitializeConnectionPool;
-use ZanPHP\ServerBase\WorkerStart\InitializeErrorHandler;
-use ZanPHP\ServerBase\WorkerStart\InitializeEtcdTTLRefreshing;
-use ZanPHP\ServerBase\WorkerStart\InitializeHawkMonitor;
-use ZanPHP\ServerBase\WorkerStart\InitializeServerDiscovery;
-use ZanPHP\ServerBase\WorkerStart\InitializeServiceChain;
-use ZanPHP\ServerBase\WorkerStart\InitializeWorkerMonitor;
-use ZanPHP\Support\Di;
-use ZanPHP\TcpServer\ServerStart\InitializeMiddleware;
-use ZanPHP\TcpServer\ServerStart\InitializeSqlMap;
-use ZanPHP\TcpServer\WorkerStart\InitializeServerRegister;
-use ZanPHP\WorkerMonitor\WorkerMonitor;
+use Zan\Framework\Foundation\Application;
+use Zan\Framework\Foundation\Core\Path;
+use Zan\Framework\Foundation\Core\Config;
+use Zan\Framework\Foundation\Exception\ZanException;
+use Zan\Framework\Network\Server\ServerBase;
+use Zan\Framework\Network\Tcp\ServerStart\InitializeMiddleware;
+use Zan\Framework\Network\Tcp\ServerStart\InitializeSqlMap;
+use Zan\Framework\Network\Server\WorkerStart\InitializeWorkerMonitor;
+use Zan\Framework\Network\Tcp\WorkerStart\InitializeServerRegister;
+use Zan\Framework\Foundation\Container\Di;
+use Zan\Framework\Network\ServerManager\ServiceUnregister;
 
 class Server extends ServerBase
 {
@@ -60,15 +61,14 @@ class Server extends ServerBase
 
     protected function init()
     {
-        $repository = make(Repository::class);
-        $config = $repository->get('registry.novaApi', null);
+        $config = Config::get('registry.novaApi', null);
         if(null === $config){
             return true;
         }
 
         Nova::init($this->parserNovaConfig($config));
 
-        $config = $repository->get('registry');
+        $config = Config::get('registry');
         if (isset($config['app_names']) && is_array($config['app_names']) && [] !== $config['app_names']) {
             ServerStore::getInstance()->resetLockDiscovery();
         }
@@ -110,7 +110,7 @@ class Server extends ServerBase
         // ServerDiscoveryInitiator::getInstance()->unlockDiscovery($workerId);
         sys_echo("worker *$workerId stopping ....");
 
-        $num = WorkerMonitor::getInstance()->reactionNum ?: 0;
+        $num = Worker::getInstance()->reactionNum ?: 0;
         sys_echo("worker *$workerId still has $num requests in progress...");
     }
 
@@ -119,7 +119,7 @@ class Server extends ServerBase
         // ServerDiscoveryInitiator::getInstance()->unlockDiscovery($workerId);
         sys_echo("worker error happening [workerId=$workerId, workerPid=$workerPid, exitCode=$exitCode, signalNo=$sigNo]...");
 
-        $num = WorkerMonitor::getInstance()->reactionNum ?: 0;
+        $num = Worker::getInstance()->reactionNum ?: 0;
         sys_echo("worker *$workerId still has $num requests in progress...");
     }
 
@@ -165,9 +165,8 @@ class Server extends ServerBase
         if (!is_array($config)) {
             throw new ZanException("invalid nova config[novaApi], see: http://zanphpdoc.zanphp.io/config/registry.html#id3");
         }
-        $application = make(Application::class);
         if (isset($config["path"])) {
-            $appName = $application->getName();
+            $appName = Application::getInstance()->getName();
             if (!isset($config["appName"])) {
                 $config["appName"] = $appName;
             }
@@ -176,13 +175,13 @@ class Server extends ServerBase
 
         foreach ($config as &$item) {
             if (!isset($item["appName"])) {
-                $item["appName"] = $application->getName();
+                $item["appName"] = Application::getInstance()->getName();
             }
             if(!isset($item["path"])){
                 throw new ZanException("nova server path not defined[novaApi.path], see: http://zanphpdoc.zanphp.io/config/registry.html#id3");
             }
 
-            $item["path"] = getenv("path.root") . $item["path"];
+            $item["path"] = Path::getRootPath() . $item["path"];
 
             if(!isset($item["namespace"])){
                 throw new ZanException("nova namespace path not defined[novaApi.namespace], see: http://zanphpdoc.zanphp.io/config/registry.html#id3");

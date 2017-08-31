@@ -1,6 +1,6 @@
 <?php
 
-namespace ZanPHP\TcpServer;
+namespace Zan\Framework\Network\Tcp;
 
 use Thrift\Exception\TApplicationException;
 use ZanPHP\Contracts\Tcp\TcpRequest;
@@ -8,7 +8,6 @@ use ZanPHP\Contracts\Codec\Codec;
 use ZanPHP\Exception\Codec\CodecException;
 use ZanPHP\NovaCodec\NovaPDU;
 use ZanPHP\NovaGeneric\GenericRequestCodec as GenericRequestCodecA;
-use ZanPHP\RpcContext\RpcContext;
 use ZanPHP\ThriftSerialization\ThriftSerializable;
 
 class Request implements TcpRequest

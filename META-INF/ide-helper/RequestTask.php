@@ -1,18 +1,18 @@
 <?php
 
-namespace ZanPHP\TcpServer;
+namespace Zan\Framework\Network\Tcp;
 
 use Thrift\Exception\TApplicationException;
-use ZanPHP\Contracts\Config\Repository;
-use ZanPHP\Contracts\Foundation\Application;
-use ZanPHP\Contracts\Hawk\Hawk;
-use ZanPHP\Contracts\Trace\Constant;
-use ZanPHP\Contracts\Trace\Trace;
-use ZanPHP\Coroutine\Context;
-use ZanPHP\Coroutine\Task;
-use ZanPHP\Log\Log;
-use ZanPHP\NovaGeneric\GenericInvokeException;
-use ZanPHP\ServerBase\Middleware\MiddlewareManager;
+use Zan\Framework\Foundation\Application;
+use Zan\Framework\Foundation\Core\Config;
+use Zan\Framework\Foundation\Coroutine\Task;
+use Zan\Framework\Network\Exception\GenericInvokeException;
+use Zan\Framework\Network\Server\Middleware\MiddlewareManager;
+use Zan\Framework\Sdk\Log\Log;
+use Zan\Framework\Sdk\Monitor\Hawk;
+use Zan\Framework\Sdk\Trace\Constant;
+use Zan\Framework\Sdk\Trace\Trace;
+use Zan\Framework\Utilities\DesignPattern\Context;
 
 class RequestTask
 {
@@ -52,7 +52,7 @@ class RequestTask
 
     private function handleRequestException($e)
     {
-        $hawk = make(Hawk::class);
+        $hawk = Hawk::getInstance();
         if ($e instanceof TApplicationException) {
             $hawk->addTotalFailureTime(Hawk::SERVER,
                 $this->request->getServiceName(),
@@ -104,7 +104,7 @@ class RequestTask
         $result = (yield $dispatcher->dispatch($this->request, $this->context));
         $this->output($result);
 
-        $hawk = make(Hawk::class);
+        $hawk = Hawk::getInstance();
         $hawk->addTotalSuccessTime(Hawk::SERVER,
             $this->request->getServiceName(),
             $this->request->getMethodName(),
@@ -125,8 +125,7 @@ class RequestTask
 
     private function logErr($e)
     {
-        $repository = make(Repository::class);
-        $key = $repository->get('log.zan_framework');
+        $key = Config::get('log.zan_framework');
         if ($key) {
             $coroutine = $this->doErrLog($e);
             Task::execute($coroutine);
@@ -147,10 +146,9 @@ class RequestTask
                 $traceId = '';
             }
 
-            $application = make(Application::class);
             yield Log::make('zan_framework')->error($e->getMessage(), [
                 'exception' => $e,
-                'app' => $application->getName(),
+                'app' => Application::getInstance()->getName(),
                 'language'=>'php',
                 'side'=>'server',//server,client两个选项
                 'traceId'=> $traceId,

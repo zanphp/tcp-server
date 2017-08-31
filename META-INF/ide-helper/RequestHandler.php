@@ -1,22 +1,23 @@
 <?php
 
-namespace ZanPHP\TcpServer;
+namespace Zan\Framework\Network\Tcp;
 
 use \swoole_server as SwooleServer;
-use ZanPHP\Contracts\Config\Repository;
-use ZanPHP\Contracts\Foundation\Application;
-use ZanPHP\Contracts\Trace\Trace;
-use ZanPHP\Coroutine\Context;
-use ZanPHP\Coroutine\Signal;
-use ZanPHP\Coroutine\Task;
-use ZanPHP\Exception\Network\ExcessConcurrencyException;
-use ZanPHP\Exception\Network\ServerTimeoutException;
+use Zan\Framework\Foundation\Application;
+use Zan\Framework\Foundation\Core\Config;
+use Zan\Framework\Foundation\Core\Debug;
+use Zan\Framework\Foundation\Coroutine\Signal;
+use Zan\Framework\Foundation\Coroutine\Task;
+use Zan\Framework\Network\Exception\ExcessConcurrencyException;
+use Zan\Framework\Network\Exception\ServerTimeoutException;
+use Zan\Framework\Network\Server\Middleware\MiddlewareManager;
+use Zan\Framework\Network\Server\Monitor\Worker;
+use Zan\Framework\Network\Server\Timer\Timer;
+use Zan\Framework\Sdk\Log\Log;
+use Zan\Framework\Sdk\Trace\Trace;
+use Zan\Framework\Utilities\DesignPattern\Context;
+use Zan\Framework\Utilities\Types\Time;
 use ZanPHP\Hawk\Hawk;
-use ZanPHP\Log\Log;
-use ZanPHP\ServerBase\Middleware\MiddlewareManager;
-use ZanPHP\Support\Time;
-use ZanPHP\Timer\Timer;
-use ZanPHP\WorkerMonitor\WorkerMonitor;
 
 class RequestHandler
 {
@@ -66,8 +67,7 @@ class RequestHandler
         $this->context->set('request', $request);
         $this->context->set('swoole_response', $this->response);
         $this->context->set('request_time', Time::stamp());
-        $repository = make(Repository::class);
-        $request_timeout = $repository->get('server.request_timeout');
+        $request_timeout = Config::get('server.request_timeout');
         $request_timeout = $request_timeout ? $request_timeout : self::DEFAULT_TIMEOUT;
         $this->context->set('request_timeout', $request_timeout);
         $this->context->set('request_end_event_name', $this->getRequestFinishJobId());
@@ -83,7 +83,7 @@ class RequestHandler
 
             $this->middleWareManager = new MiddlewareManager($request, $this->context);
 
-            $isAccept = WorkerMonitor::instance()->reactionReceive();
+            $isAccept = Worker::instance()->reactionReceive();
             //限流
             if (!$isAccept) {
                 throw new ExcessConcurrencyException('现在访问的人太多,请稍后再试..', 503);
@@ -108,8 +108,7 @@ class RequestHandler
     private function handleRequestException($response, $e)
     {
         try {
-            $repository = make(Repository::class);
-            if ($repository->get("debug")) {
+            if (Debug::get()) {
                 echo_exception($e);
             }
 
@@ -132,7 +131,7 @@ class RequestHandler
 
     /**
      * @param $middleware
-     * @param Response $response
+     * @param \Zan\Framework\Network\Tcp\Response $response
      * @param $t
      */
     public static function handleException($middleware, $response, $t)
@@ -252,8 +251,7 @@ class RequestHandler
 
     private function logErr(\Exception $e)
     {
-        $repository = make(Repository::class);
-        $key = $repository->get('log.zan_framework');
+        $key = Config::get('log.zan_framework');
         if ($key) {
             $coroutine = $this->doErrLog($e);
             Task::execute($coroutine);
@@ -274,10 +272,9 @@ class RequestHandler
                 $traceId = '';
             }
 
-            $application = make(Application::class);
             yield Log::make('zan_framework')->error($e->getMessage(), [
                 'exception' => $e,
-                'app' => $application->getName(),
+                'app' => Application::getInstance()->getName(),
                 'language'=>'php',
                 'side'=>'server',//server,client两个选项
                 'traceId'=> $traceId,

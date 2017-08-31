@@ -2,11 +2,25 @@
   "name": "zanphp/tcp-server",
   "require": {
     "php": ">=5.6",
-    "zanphp/server-base": "dev-master"
+    "zanphp/server-base": "dev-master",
+    "zanphp/database": "dev-master",
+    "zanphp/contracts": "dev-master",
+    "zanphp/etcd-registry": "dev-master",
+    "zanphp/container": "dev-master",
+    "zanphp/coroutine": "dev-master",
+    "zanphp/nova": "dev-master",
+    "packaged/thrift": "0.9.2.1",
+    "zanphp/thrift-serialization": "dev-master",
+    "zanphp/exception": "dev-master",
+    "zanphp/worker-monitor": "dev-master",
+    "zanphp/timer": "dev-master",
+    "zanphp/log": "dev-master",
+    "zanphp/support": "dev-master",
+    "zanphp/nova-generic": "dev-master"
   },
   "autoload": {
     "psr-4": {
-      "Zan\\Framework\\Network\\Tcp\\": "src/"
+      "ZanPHP\\TcpServer\\": "src/"
     }
   },
   "extra": {

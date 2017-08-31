@@ -1,6 +1,6 @@
 <?php
 
-namespace ZanPHP\TcpServer;
+namespace Zan\Framework\Network\Tcp;
 
 class ResponseEntity
 {

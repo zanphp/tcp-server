@@ -1,9 +1,10 @@
 <?php
 
-namespace ZanPHP\TcpServer;
+namespace Zan\Framework\Network\Tcp;
 
+use Kdt\Iron\Nova\Nova;
 use swoole_server as SwooleServer;
-use ZanPHP\Contracts\Network\Response as BaseResponse;
+use Zan\Framework\Contract\Network\Response as BaseResponse;
 use ZanPHP\Contracts\Codec\Codec;
 use ZanPHP\Exception\Codec\CodecException;
 use ZanPHP\NovaCodec\NovaPDU;
