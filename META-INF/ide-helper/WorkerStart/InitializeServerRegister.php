@@ -9,15 +9,18 @@
 namespace Zan\Framework\Network\Tcp\WorkerStart;
 
 use Zan\Framework\Contract\Network\Bootable;
-use Zan\Framework\Network\ServerManager\ServerRegisterInitiator;
 
 class InitializeServerRegister implements Bootable
 {
-    /**
-     * @param
-     */
+    private $InitializeServerRegister;
+
+    public function __construct()
+    {
+        $this->InitializeServerRegister = new \ZanPHP\TcpServer\WorkerStart\InitializeServerRegister();
+    }
+
     public function bootstrap($server)
     {
-        ServerRegisterInitiator::getInstance()->init();
+        $this->InitializeServerRegister->bootstrap($server);
     }
 }

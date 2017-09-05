@@ -2,290 +2,154 @@
 
 namespace Zan\Framework\Network\Tcp;
 
-use Thrift\Exception\TApplicationException;
 use ZanPHP\Contracts\Tcp\TcpRequest;
-use ZanPHP\Contracts\Codec\Codec;
-use ZanPHP\Exception\Codec\CodecException;
-use ZanPHP\NovaCodec\NovaPDU;
-use ZanPHP\NovaGeneric\GenericRequestCodec as GenericRequestCodecA;
-use ZanPHP\ThriftSerialization\ThriftSerializable;
 
 class Request implements TcpRequest
 {
-    private $swooleServer;
-    private $data;
-    private $route;
-    private $serviceName;
-    private $novaServiceName;
-    private $methodName;
-    private $args;
-    private $fd;
-
-    private $remoteIp;
-    private $remotePort;
-    private $fromId;
-    private $seqNo;
-
-    private $startTime;
-    private $isHeartBeat = false;
-
-    private $isGenericInvoke = false;
-    private $genericServiceName;
-    private $genericMethodName;
-    private $genericRoute;
-
-    /**
-     * @var RpcContext
-     */
-    private $rpcContext;
+    private $Request;
 
     public function __construct($fd, $fromId, $data, $swooleServer)
     {
-        $this->fd = $fd;
-        $this->fromId = $fromId;
-        $this->data = $data;
-        $this->swooleServer = $swooleServer;
-        $this->rpcContext = new RpcContext();
+        $this->Request = new \ZanPHP\TcpServer\Request($fd, $fromId, $data, $swooleServer);
     }
 
     public function getData()
     {
-        return $this->data;
+        $this->Request->getData();
     }
 
     public function setData($data)
     {
-        $this->data = $data;
+        $this->Request->setData($data);
     }
 
     public function setFd($fd)
     {
-        $this->fd = $fd;
+        $this->Request->setFd($fd);
     }
 
     public function getFd()
     {
-        return $this->fd;
+        $this->Request->getFd();
     }
 
     public function setRemote($ip, $port)
     {
-        $this->remoteIp = $ip;
-        $this->remotePort = $port;
+        $this->Request->setRemote($ip, $port);
     }
 
     public function setFromId($fromId)
     {
-        $this->fromId = $fromId;
+        $this->Request->setFromId($fromId);
     }
 
     public function setSeqNo($seqNo)
     {
-        $this->seqNo = $seqNo;
+        $this->Request->setSeqNo($seqNo);
     }
 
     public function getAttachData()
     {
-        return $this->rpcContext->packNovaAttach();
+        $this->Request->getAttachData();
     }
 
     public function getRoute()
     {
-        return $this->route;
+        $this->Request->getRoute();
     }
 
     public function getServiceName()
     {
-        return $this->serviceName;
+        $this->Request->getServiceName();
     }
 
     public function getNovaServiceName()
     {
-        return $this->novaServiceName;
+        $this->Request->getNovaServiceName();
     }
 
     public function getMethodName()
     {
-        return $this->methodName;
+        $this->Request->getMethodName();
     }
 
     public function getArgs()
     {
-        return $this->args;
+        $this->Request->getArgs();
     }
 
     public function getRemote()
     {
-        return [
-            'ip' =>$this->remoteIp,
-            'port' => $this->remotePort,
-        ];
+        $this->Request->getRemote();
     }
 
     public function getRemotePort()
     {
-        return $this->remotePort;
+        $this->Request->getRemotePort();
     }
 
     public function getFromId()
     {
-        return $this->fromId;
+        $this->Request->getFromId();
     }
 
     public function getSeqNo()
     {
-        return $this->seqNo;
+        $this->Request->getSeqNo();
     }
 
     public function getIsHeartBeat()
     {
-        return $this->isHeartBeat;
+        $this->Request->getIsHeartBeat();
     }
 
     public function getStartTime()
     {
-        return $this->startTime;
+        $this->Request->getStartTime();
     }
 
     public function setStartTime()
     {
-        $this->startTime = microtime(true);
+        $this->Request->setStartTime();
     }
 
     public function getRemoteIp()
     {
-        return $this->remoteIp;
+        $this->Request->getRemoteIp();
     }
 
     public function setRemoteIp($remoteIp)
     {
-        $this->remoteIp = $remoteIp;
+        $this->Request->setRemoteIp($remoteIp);
     }
 
     public function getGenericServiceName()
     {
-        return $this->genericServiceName;
+        $this->Request->getGenericServiceName();
     }
 
     public function getGenericMethodName()
     {
-        return $this->genericMethodName;
+        $this->Request->getGenericMethodName();
     }
 
     public function getGenericRoute()
     {
-        return $this->genericRoute;
+        $this->Request->getGenericRoute();
     }
 
     public function getRpcContext()
     {
-        return $this->rpcContext;
+        $this->Request->getRpcContext();
     }
 
     public function isGenericInvoke()
     {
-        return $this->isGenericInvoke;
+        $this->Request->isGenericInvoke();
     }
 
-    private function formatRoute()
+    public function decode()
     {
-        $serviceName = ucwords($this->serviceName, '.');
-        $this->novaServiceName = str_replace('.','\\',$serviceName);
-
-        $path = '/'. str_replace('.', '/', $serviceName) . '/';
-        $this->route = $path . $this->methodName;
-    }
-
-    private function decodeArgs()
-    {
-        $thrift = new ThriftSerializable();
-        $thrift->service = $this->novaServiceName;
-        $thrift->method = $this->methodName;
-        $thrift->struct = $this->args;
-        $thrift->side = ThriftSerializable::SERVER;
-        $this->args = $thrift->unserialize();
-    }
-
-    public function decode() {
-        /** @var Codec $codec */
-        $codec = make("codec:nova");
-
-        try {
-            $pdu = $codec->decode($this->data);
-            if ($pdu instanceof NovaPDU) {
-                return $this->decodeNovaRequest($pdu, $codec);
-            }
-        } catch (CodecException $e) {
-            throw new TApplicationException("nova_decode fail");
-        }
-    }
-
-    private function decodeNovaRequest(NovaPDU $pdu, Codec $codec)
-    {
-        $this->serviceName = trim($pdu->serviceName);
-        $this->methodName = trim($pdu->methodName);
-        $this->args = $pdu->body;
-        $this->remoteIp = $pdu->ip;
-        $this->remotePort = $pdu->port;
-        $this->seqNo = $pdu->seqNo;
-        $this->rpcContext->unpackNovaAttach($pdu->attach);
-
-        if($this->serviceName === "com.youzan.service.test") {
-            if ($this->methodName === "ping") {
-                $this->isHeartBeat = true;
-                $pdu->methodName = "pong";
-                $pdu->attach = "";
-                $pdu->body = "";
-                return $codec->encode($pdu);
-            }
-        }
-
-        $this->isGenericInvoke = GenericRequestCodecA::isGenericService($this->serviceName);
-        if ($this->isGenericInvoke) {
-            $this->initGenericInvoke($this->serviceName);
-
-            if (!method_exists($this->swooleServer, "stats")) {
-                return null;
-            }
-            if ($this->genericServiceName == "com.youzan.service.test") {
-                if ($this->genericMethodName === "stats") {
-                    $content = GenericRequestCodecA::encode($this->genericServiceName, $this->genericMethodName, $this->swooleServer->stats());
-
-                    $thrift = new ThriftSerializable();
-                    $thrift->service = $this->novaServiceName;
-                    $thrift->method = $this->methodName;
-                    $thrift->struct = $content;
-                    $thrift->side = ThriftSerializable::SERVER;
-                    $content = $thrift->serialize();
-
-                    $this->isHeartBeat = true;
-                    $pdu->methodName = "stats";
-                    $pdu->attach = "";
-                    $pdu->body = $content;
-                    return $codec->encode($pdu);
-                }
-            }
-            return null;
-        }
-
-        $this->formatRoute();
-        $this->decodeArgs();
-    }
-
-
-    private function initGenericInvoke($serviceName)
-    {
-        $this->novaServiceName = str_replace('.', '\\', ucwords($this->serviceName, '.'));
-        $genericRequest = GenericRequestCodecA::decode($this->novaServiceName, $this->methodName, $this->args);
-        $this->genericServiceName = $genericRequest->serviceName;
-        $this->genericMethodName = $genericRequest->methodName;
-        $this->args = $genericRequest->methodParams;
-        $this->route = '/'. str_replace('.', '/', $serviceName) . '/' . $this->methodName;
-        $this->genericRoute = '/'. str_replace('\\', '/', $this->genericServiceName) . '/' . $this->genericMethodName;
-
-        // NOTICE: java-nova框架使用async的参数, 在java应用间表示调用发方式
-        // php无用, 且通过nova透传调用改参数调用java会变成异步调用, 此处删除
-        // 卡门其他透传参数暂时保留
-        $this->rpcContext->set("async", null);
+        $this->Request->decode() ;
     }
 }

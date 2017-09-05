@@ -1,15 +1,20 @@
 <?php
 
-
 namespace Zan\Framework\Network\Tcp\ServerStart;
 
 use Zan\Framework\Contract\Network\Bootable;
-use Zan\Framework\Store\Database\Sql\SqlMapInitiator;
 
 class InitializeSqlMap implements Bootable
 {
+    private $InitializeSqlMap;
+
+    public function __construct()
+    {
+        $this->InitializeSqlMap = new \ZanPHP\TcpServer\ServerStart\InitializeSqlMap();
+    }
+
     public function bootstrap($server)
     {
-        SqlMapInitiator::getInstance()->init();
+        $this->InitializeSqlMap->bootstrap($server);
     }
 }
