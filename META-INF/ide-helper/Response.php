@@ -2,126 +2,42 @@
 
 namespace Zan\Framework\Network\Tcp;
 
-use Kdt\Iron\Nova\Nova;
 use swoole_server as SwooleServer;
-use Zan\Framework\Contract\Network\Response as BaseResponse;
-use ZanPHP\Contracts\Codec\Codec;
-use ZanPHP\Exception\Codec\CodecException;
-use ZanPHP\NovaCodec\NovaPDU;
-use ZanPHP\NovaGeneric\GenericRequestCodec as GenericRequestCodecY;
-use ZanPHP\ThriftSerialization\ThriftSerializable;
+use ZanPHP\Contracts\Network\Response as BaseResponse;
+use ZanPHP\TcpServer\Request;
 
 class Response implements BaseResponse
 {
-    /**
-     * @var SwooleServer
-     */
-    private $swooleServer;
-
-    /**
-     * @var Request
-     */
-    private $request;
-
-    private $exception;
-
-    /**
-     * @var Codec
-     */
-    private $codec;
+    private $Response;
 
     public function __construct(SwooleServer $swooleServer, Request $request)
     {
-        $this->swooleServer = $swooleServer;
-        $this->request = $request;
-        $this->codec = make("codec:nova");
+        $this->Response = new \ZanPHP\TcpServer\Response($swooleServer, $request);
     }
 
     public function getSwooleServer()
     {
-        return $this->swooleServer;
+        $this->Response->getSwooleServer();
     }
 
     public function getException()
     {
-        return $this->exception;
+        $this->Response->getException();
     }
 
     public function end($content='')
     {
-        $this->send($content);
+        $this->Response->end($content);
     }
 
-    /**
-     * @param $e \Exception
-     */
     public function sendException($e)
     {
-        $this->exception = $e->getMessage();
-        $serviceName = $this->request->getServiceName();
-        $novaServiceName = $this->request->getNovaServiceName();
-        $methodName  = $this->request->getMethodName();
-
-        // 泛化调用不透传任何异常, 直接打包发送
-        if ($this->request->isGenericInvoke()) {
-            return $this->send($e);
-        }
-
-
-        $thrift = new ThriftSerializable();
-        $thrift->service = $novaServiceName;
-        $thrift->method = $methodName;
-        $thrift->structEx = $e;
-        $thrift->side = ThriftSerializable::SERVER;
-        $content = $thrift->serialize();
-
-        $this->sendNovaResponse($serviceName, $methodName, $content);
+        $this->Response->sendException($e);
     }
 
     public function send($content)
     {
-        $serviceName = $this->request->getServiceName();
-        $novaServiceName = $this->request->getNovaServiceName();
-        $methodName  = $this->request->getMethodName();
-
-        if ($this->request->isGenericInvoke()) {
-            $content = GenericRequestCodecY::encode(
-                $this->request->getGenericServiceName(),
-                $this->request->getGenericMethodName(), $content);
-        }
-
-        $thrift = new ThriftSerializable();
-        $thrift->service = $novaServiceName;
-        $thrift->method = $methodName;
-        $thrift->struct = $content;
-        $thrift->side = ThriftSerializable::SERVER;
-        $content = $thrift->serialize();
-
-        $this->sendNovaResponse($serviceName, $methodName, $content);
+        $this->Response->send($content);
     }
 
-    private function sendNovaResponse($serviceName, $methodName, $content)
-    {
-        $remote = $this->request->getRemote();
-
-        $pdu = new NovaPDU();
-        $pdu->serviceName = $serviceName;
-        $pdu->methodName = $methodName;
-        $pdu->ip = $remote["ip"];
-        $pdu->port = $remote["port"];
-        $pdu->seqNo = $this->request->getSeqNo();
-        $pdu->attach = $this->request->getAttachData();
-        $pdu->body = $content;
-
-        try {
-            $outputBuffer = $this->codec->encode($pdu);
-            $swooleServer = $this->getSwooleServer();
-            $swooleServer->send(
-                $this->request->getFd(),
-                $outputBuffer
-            );
-        } catch (CodecException $e) {
-            echo_exception($e);
-        }
-    }
 }

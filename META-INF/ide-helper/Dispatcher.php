@@ -2,61 +2,21 @@
 
 namespace Zan\Framework\Network\Tcp;
 
-
-use Zan\Framework\Foundation\Application;
-use Zan\Framework\Utilities\DesignPattern\Context;
-use Kdt\Iron\Nova\Nova;
+use ZanPHP\Coroutine\Context;
+use ZanPHP\TcpServer\Request;
 
 class Dispatcher
 {
-    /**
-     * @var Request
-     */
-    private $request = null;
-    private $context = null;
+    private $Dispatcher;
+
+    public function __construct()
+    {
+        $this->Dispatcher = new \ZanPHP\TcpServer\Dispatcher();
+    }
 
     public function dispatch(Request $request, Context $context)
     {
-        $this->request = $request;
-        $this->context = $context;
-
-        yield $this->runService();
+        $this->Dispatcher->dispatch($request, $context);
     }
 
-    private function runService()
-    {
-        $serviceName = $this->getServiceName();
-
-        $service = new $serviceName();
-
-        if ($this->request->isGenericInvoke()) {
-            $method = $this->request->getGenericMethodName();
-        } else {
-            $method = $this->request->getMethodName();
-        }
-
-        $args    = $this->request->getArgs();
-        $args    = is_array($args) ? $args : [$args];
-
-        yield $service->$method(...array_values($args));
-    }
-
-    private function getServiceName()
-    {
-        $app = Application::getInstance();
-        $appNamespace = $app->getNamespace();
-        $appName = $app->getName();
-
-        if ($this->request->isGenericInvoke()) {
-            $serviceName = $this->request->getGenericServiceName();
-        } else {
-            $serviceName = $this->request->getNovaServiceName();
-        }
-
-        $serviceName = str_replace('.', '\\', $serviceName);
-        $serviceName = Nova::removeNovaNamespace($serviceName, $appName);
-        $serviceName = $appNamespace . $serviceName;
-
-        return $serviceName;
-    }
 }
