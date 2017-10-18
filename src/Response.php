@@ -115,10 +115,13 @@ class Response implements BaseResponse
         try {
             $outputBuffer = $this->codec->encode($pdu);
             $swooleServer = $this->getSwooleServer();
-            $swooleServer->send(
+            $result = $swooleServer->send(
                 $this->request->getFd(),
                 $outputBuffer
             );
+            if ($result !== true) {
+                sys_error("send nova response failed");
+            }
         } catch (CodecException $e) {
             echo_exception($e);
         }
